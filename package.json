@@ -54,8 +54,7 @@
     "mac": {
       "category": "public.app-category.graphics-design",
       "target": [
-        "dmg",
-        "zip"
+        "dmg"
       ],
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "identity": null,

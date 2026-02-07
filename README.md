@@ -60,16 +60,23 @@ Pushing a **version tag** triggers a workflow that builds macOS and Windows and 
    - `docs: Z` → documentation
    - See [Conventional Commits](https://www.conventionalcommits.org/) for more.
 
-**If macOS says "Malware Blocked and Moved to Bin"**: The app is unsigned, so Gatekeeper blocks it. To run it anyway:
-1. Restore **Spine Viewer.app** from Bin (drag it back to e.g. `dist/mac-arm64/` or your Desktop).
-2. In Terminal:
+**If macOS says the app is "damaged" or "can't be opened"**: The app is unsigned, so Gatekeeper blocks it (the "damaged" message is misleading — the app is fine). To run it:
+
+1. Open the DMG and drag **Spine Viewer** to Applications (or your Desktop).
+2. In Terminal, remove the quarantine flag (use the path where you put the app):
    ```bash
-   xattr -cr "/path/to/Spine Viewer.app"
+   xattr -cr "/Applications/Spine Viewer.app"
    ```
-   (Use the real path, e.g. `~/Desktop/Spine\ Viewer.app` or `dist/mac-arm64/Spine\ Viewer.app`.)
+   Or if it’s on your Desktop: `xattr -cr "$HOME/Desktop/Spine Viewer.app"`
 3. Right-click the app → **Open** → click **Open** in the dialog. After that you can double-click as usual.
 
-To avoid the warning for everyone (e.g. when sharing the app), you need to **notarize** it with an Apple Developer account (Developer ID Application certificate + notarization). Then Gatekeeper will accept the app without these steps.
+**If macOS says "Malware Blocked and Moved to Bin"**: Same cause. Restore the app from Bin, then do steps 2–3 above with the path to the restored app.
+
+To avoid these prompts for everyone, the app would need to be **signed and notarized** with an Apple Developer account (Developer ID Application certificate + notarization).
+
+## Installing (from a release)
+
+Download the **DMG** (macOS) or **EXE** (Windows) from the [Releases](https://github.com/dimat/spine-viewer/releases) page. On macOS, if you see *"Spine Viewer is damaged and can't be opened"*, see the workaround in the [Releasing](#releasing-github-actions) section (drag app out of the DMG, run `xattr -cr` on it, then Right-click → Open).
 
 ## Usage
 

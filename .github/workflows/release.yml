@@ -68,19 +68,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist-mac
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
+          path: dist/*.dmg
 
       - name: Upload Windows artifacts
         if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
           name: dist-win
-          path: |
-            dist/*.exe
-            dist/*.blockmap
+          path: dist/*.exe
 
   release:
     needs: build
@@ -97,14 +92,19 @@ jobs:
         with:
           name: dist-win
 
+      - name: Gather release assets
+        run: |
+          mkdir -p release-assets
+          cp dist-mac/* release-assets/ 2>/dev/null || true
+          cp dist-win/* release-assets/ 2>/dev/null || true
+          ls -la release-assets/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Spine Viewer ${{ github.ref_name }}
           generate_release_notes: true
-          files: |
-            dist-mac/*
-            dist-win/*
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
