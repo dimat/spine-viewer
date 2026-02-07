@@ -44,6 +44,7 @@
   "build": {
     "appId": "ai.toonstudio.spine-viewer",
     "productName": "Spine Viewer",
+    "publish": null,
     "directories": {
       "output": "dist"
     },

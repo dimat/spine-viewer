@@ -104,7 +104,7 @@ jobs:
           name: Spine Viewer ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist-mac/dist/*
-            dist-win/dist/*
+            dist-mac/*
+            dist-win/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
