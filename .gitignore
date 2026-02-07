@@ -32,3 +32,6 @@ Thumbs.db
 # Optional
 coverage/
 .cache/
+
+# TypeScript incremental
+*.tsbuildinfo

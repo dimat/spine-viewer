@@ -66,15 +66,15 @@ ipcMain.handle('open-folder', async () => {
     win.focus()
     if (win.isMinimized()) win.restore()
   }
-  const parent = win ?? null
-  const result = await dialog.showOpenDialog(parent, {
+  const options: Electron.OpenDialogOptions = {
     properties: ['openFile', 'openDirectory'],
     title: 'Select Spine animation folder or JSON file',
     filters: [
       { name: 'Spine JSON', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] }
     ]
-  })
+  }
+  const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
   if (result.canceled || result.filePaths.length === 0) return null
   return result.filePaths[0]
 })
