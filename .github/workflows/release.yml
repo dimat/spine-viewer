@@ -95,8 +95,14 @@ jobs:
       - name: Gather release assets
         run: |
           mkdir -p release-assets
-          cp dist-mac/* release-assets/ 2>/dev/null || true
-          cp dist-win/* release-assets/ 2>/dev/null || true
+          # Downloaded artifacts keep upload path (dist/...), so files live under dist-mac/dist/ and dist-win/dist/
+          for dir in dist-mac dist-win; do
+            if [ -d "$dir/dist" ]; then
+              cp "$dir"/dist/* release-assets/
+            else
+              cp "$dir"/* release-assets/ 2>/dev/null || true
+            fi
+          done
           ls -la release-assets/
 
       - name: Create GitHub Release
