@@ -63,16 +63,22 @@ export function useSpineLoad({
   const isPlayingRef = useRef(isPlaying)
   const loopRef = useRef(loop)
   const onLoadedRef = useRef(onLoaded)
+  const onErrorRef = useRef(onError)
   const onDropRef = useRef(onDrop)
   const onDragOverRef = useRef(onDragOver)
+  const skinNameRef = useRef(skinName)
+  const animationNameRef = useRef(animationName)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   onLoadedRef.current = onLoaded
+  onErrorRef.current = onError
   onDropRef.current = onDrop
   onDragOverRef.current = onDragOver
   isPlayingRef.current = isPlaying
   loopRef.current = loop
+  skinNameRef.current = skinName
+  animationNameRef.current = animationName
 
   const notifyLoaded = useCallback((meta: LoadedMeta) => {
     const cb = onLoadedRef.current
@@ -88,7 +94,7 @@ export function useSpineLoad({
       if (loadIdRef.current !== myLoadId) return
       const msg = err instanceof Error ? err.message : String(err)
       setError(msg || 'Failed to load animation')
-      onError?.(msg || 'Failed to load animation')
+      onErrorRef.current?.(msg || 'Failed to load animation')
       setIsLoading(false)
     }
 
@@ -319,16 +325,18 @@ export function useSpineLoad({
       centerAndScaleSpine(spine, app.screen.width, app.screen.height)
       spineRef.current = spine
 
-      const skinToUse = skinName && skeletonData.skins.find((s) => s.name === skinName)
-        ? skinName
+      const currentSkin = skinNameRef.current
+      const skinToUse = currentSkin && skeletonData.skins.find((s) => s.name === currentSkin)
+        ? currentSkin
         : (skeletonData.defaultSkin?.name ?? skeletonData.skins[0]?.name ?? '')
       if (skinToUse) {
         spine.skeleton.setSkinByName(skinToUse)
         spine.skeleton.setSlotsToSetupPose()
       }
 
-      const targetAnim = animationName && skeletonData.animations.find((a) => a.name === animationName)
-        ? animationName
+      const currentAnim = animationNameRef.current
+      const targetAnim = currentAnim && skeletonData.animations.find((a) => a.name === currentAnim)
+        ? currentAnim
         : skeletonData.animations[0]?.name
       if (targetAnim) {
         currentAnimationRef.current = targetAnim
@@ -352,7 +360,7 @@ export function useSpineLoad({
       console.error('[SpineViewer] load failed', err)
       applyError(err)
     }
-  }, [folderPath, initialSkeletonJson, skinName, animationName, notifyLoaded, onError])
+  }, [folderPath, initialSkeletonJson, notifyLoaded])
 
   useEffect(() => {
     setError(null)
