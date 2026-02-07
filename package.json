@@ -1,0 +1,72 @@
+{
+  "name": "spine-viewer",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Spine animation viewer for macOS and Windows",
+  "main": "./out/main/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "preview": "electron-vite preview",
+    "pack": "npm run build && electron-builder --dir",
+    "pack:run": "npm run pack && xattr -cr \"dist/mac-arm64/Spine Viewer.app\" && open \"dist/mac-arm64/Spine Viewer.app\"",
+    "pack:win": "npm run build && electron-builder --win --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@esotericsoftware/spine-pixi-v8": "~4.2.0",
+    "pixi.js": "^8.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "ai.toonstudio.spine-viewer",
+    "productName": "Spine Viewer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.graphics-design",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "identity": null,
+      "hardenedRuntime": false
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "fileAssociations": [
+      {
+        "ext": "json",
+        "name": "Spine JSON",
+        "role": "Viewer"
+      }
+    ]
+  }
+}
