@@ -1,5 +1,10 @@
-import { useState, useCallback, useEffect, Component, type ReactNode } from 'react'
-import { SpineViewer } from './SpineViewer'
+import { useState, useCallback, useEffect, useRef, Component, type ReactNode } from 'react'
+import { SpineViewer, type SpineViewerHandle } from './SpineViewer'
+
+function getPreferredSkinName(skins: string[]): string {
+  if (skins.length === 0) return ''
+  return skins.find((name) => name.toLowerCase() !== 'default') ?? skins[0]
+}
 
 class ViewerErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }> {
   state = { hasError: false, error: null as Error | null }
@@ -15,6 +20,7 @@ class ViewerErrorBoundary extends Component<{ children: ReactNode; fallback: Rea
 }
 
 export default function App() {
+  const viewerRef = useRef<SpineViewerHandle>(null)
   const [folderPath, setFolderPath] = useState<string | null>(null)
   const [folderName, setFolderName] = useState<string>('')
   const [initialSkeletonJson, setInitialSkeletonJson] = useState<string | null>(null)
@@ -25,6 +31,7 @@ export default function App() {
   const [selectedSkin, setSelectedSkin] = useState<string>('')
   const [isPlaying, setIsPlaying] = useState(true)
   const [loop, setLoop] = useState(false)
+  const [showRulers, setShowRulers] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
 
   const setFolder = useCallback((dirPath: string, jsonFileName: string | null = null) => {
@@ -62,20 +69,34 @@ export default function App() {
     setAnimations(meta.animations)
     setSkins(meta.skins)
     setSelectedAnimation(meta.animations[0] ?? '')
-    setSelectedSkin(meta.skins[0] ?? '')
+    setSelectedSkin(getPreferredSkinName(meta.skins))
   }, [])
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const item = e.dataTransfer.files[0]
-    if (!item) return
-    const path = (item as FileWithPath).path
-    if (!path) return
+    const file = e.dataTransfer.files[0]
+    if (!file) return
     try {
+      const legacyPath = (file as File & { path?: string }).path || ''
+      const path =
+        (typeof window.electronAPI.getPathForFile === 'function'
+          ? window.electronAPI.getPathForFile(file)
+          : legacyPath) ||
+        ''
+      if (!path) {
+        setOpenError(
+          typeof window.electronAPI.getPathForFile === 'function'
+            ? 'Could not read the dropped file path'
+            : 'Drag and drop needs an app restart to load the updated preload script'
+        )
+        return
+      }
       const { folderPath: dirPath, jsonFileName } = await window.electronAPI.getFolderForPath(path)
       setFolder(dirPath, jsonFileName)
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setOpenError(msg)
       console.error('Drop failed:', err)
     }
   }, [setFolder])
@@ -184,6 +205,48 @@ export default function App() {
           />
           <span>Loop</span>
         </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showRulers}
+            onChange={e => setShowRulers(e.target.checked)}
+            className="rounded"
+          />
+          <span>Rulers</span>
+        </label>
+        <span className="text-gray-500 text-sm">|</span>
+        <button
+          type="button"
+          onClick={() => viewerRef.current?.zoomOut()}
+          disabled={!folderPath}
+          className="px-3 py-1.5 rounded bg-[#2d2d44] hover:bg-[#3d3d54] text-sm font-medium disabled:opacity-50"
+        >
+          -
+        </button>
+        <button
+          type="button"
+          onClick={() => viewerRef.current?.zoomIn()}
+          disabled={!folderPath}
+          className="px-3 py-1.5 rounded bg-[#2d2d44] hover:bg-[#3d3d54] text-sm font-medium disabled:opacity-50"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => viewerRef.current?.zoomFit()}
+          disabled={!folderPath}
+          className="px-3 py-1.5 rounded bg-[#2d2d44] hover:bg-[#3d3d54] text-sm font-medium disabled:opacity-50"
+        >
+          Fit
+        </button>
+        <button
+          type="button"
+          onClick={() => viewerRef.current?.zoomActual()}
+          disabled={!folderPath}
+          className="px-3 py-1.5 rounded bg-[#2d2d44] hover:bg-[#3d3d54] text-sm font-medium disabled:opacity-50"
+        >
+          100%
+        </button>
         {folderName && (
           <span className="ml-auto text-gray-500 text-sm truncate max-w-[200px]" title={folderPath ?? ''}>
             {folderName}
@@ -212,12 +275,14 @@ export default function App() {
             }
           >
             <SpineViewer
+              ref={viewerRef}
               folderPath={folderPath}
               initialSkeletonJson={initialSkeletonJson}
               animationName={selectedAnimation || undefined}
               skinName={selectedSkin || undefined}
               isPlaying={isPlaying}
               loop={loop}
+              showRulers={showRulers}
               onLoaded={handleLoaded}
               onDrop={handleDrop}
               onDragOver={handleDragOver}

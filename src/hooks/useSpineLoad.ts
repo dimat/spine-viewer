@@ -85,6 +85,11 @@ export function useSpineLoad({
     if (cb) queueMicrotask(() => cb(meta))
   }, [])
 
+  const getPreferredSkinName = useCallback((skins: string[]) => {
+    if (skins.length === 0) return ''
+    return skins.find((name) => name.toLowerCase() !== 'default') ?? skins[0]
+  }, [])
+
   const loadFromFolder = useCallback(async () => {
     if (!folderPath || !containerRef.current) return
     const container = containerRef.current
@@ -134,11 +139,20 @@ export function useSpineLoad({
       const skeletonBase = jsonPath.replace(/\.(json)$/i, '').split(/[/\\]/).pop() ?? ''
       const skeletonBaseLower = skeletonBase.toLowerCase()
       let packedAtlasPath: string | null = null
+      let matchedAtlasPath: string | null = null
 
       for (let i = 0; i < allFiles.length; i++) {
         const p = allFiles[i]
         const low = lowerFiles[i]
-        if (low.endsWith('.atlas') || low.endsWith('.atlas.txt')) atlasPath = atlasPath ?? p
+        if (low.endsWith('.atlas') || low.endsWith('.atlas.txt')) {
+          const atlasFileName = p.split(/[/\\]/).pop() ?? p
+          const atlasBaseLower = atlasFileName
+            .replace(/\.atlas(\.txt)?$/i, '')
+            .toLowerCase()
+          const matchesSkeleton = atlasBaseLower === skeletonBaseLower || atlasBaseLower === 'atlas-' + skeletonBaseLower
+          if (matchesSkeleton) matchedAtlasPath = p
+          atlasPath = atlasPath ?? p
+        }
         else if (low.endsWith('.json') && !low.includes('package')) {
           try {
             const content = await api.readFile(joinPath(folderPath, p))
@@ -153,6 +167,8 @@ export function useSpineLoad({
           texturePaths.push(p)
         }
       }
+
+      if (matchedAtlasPath) atlasPath = matchedAtlasPath
 
       const jsonData = await api.readFile(joinPath(folderPath, jsonPath))
       let atlasData: string | null = null
@@ -326,9 +342,10 @@ export function useSpineLoad({
       spineRef.current = spine
 
       const currentSkin = skinNameRef.current
+      const preferredSkin = getPreferredSkinName(skeletonData.skins.map((s) => s.name))
       const skinToUse = currentSkin && skeletonData.skins.find((s) => s.name === currentSkin)
         ? currentSkin
-        : (skeletonData.defaultSkin?.name ?? skeletonData.skins[0]?.name ?? '')
+        : (preferredSkin || skeletonData.defaultSkin?.name || skeletonData.skins[0]?.name || '')
       if (skinToUse) {
         spine.skeleton.setSkinByName(skinToUse)
         spine.skeleton.setSlotsToSetupPose()
@@ -360,7 +377,7 @@ export function useSpineLoad({
       console.error('[SpineViewer] load failed', err)
       applyError(err)
     }
-  }, [folderPath, initialSkeletonJson, notifyLoaded])
+  }, [folderPath, getPreferredSkinName, initialSkeletonJson, notifyLoaded])
 
   useEffect(() => {
     setError(null)

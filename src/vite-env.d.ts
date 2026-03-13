@@ -4,6 +4,7 @@ interface ElectronAPI {
   openFolder: () => Promise<string | null>
   setSpineFolder: (folderPath: string | null) => Promise<void>
   getFolderForPath: (fileOrDirPath: string) => Promise<{ folderPath: string; jsonFileName: string | null }>
+  getPathForFile: (file: File) => string
   readFile: (path: string) => Promise<string>
   readFileAsDataURL: (path: string) => Promise<string>
   listFiles: (dir: string) => Promise<string[]>
@@ -17,7 +18,3 @@ declare global {
   }
 }
 
-// Electron renderer: File from drag-and-drop has path
-interface FileWithPath extends File {
-  path?: string
-}

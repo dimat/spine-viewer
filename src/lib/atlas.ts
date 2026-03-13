@@ -12,6 +12,72 @@ export type PackedAtlasJson = {
   meta: { image?: string; size?: { w: number; h: number }; related_multi_packs?: string[] }
 }
 
+function stripImageExtension(name: string): string {
+  return name.replace(/\.(png|jpg|jpeg|webp)$/i, '')
+}
+
+function basename(name: string): string {
+  return name.split(/[/\\]/).pop() || name
+}
+
+function cloneRegionWithName(source: TextureAtlasRegion, name: string): TextureAtlasRegion {
+  const region = new TextureAtlasRegion(source.page, name)
+  region.x = source.x
+  region.y = source.y
+  region.width = source.width
+  region.height = source.height
+  region.originalWidth = source.originalWidth
+  region.originalHeight = source.originalHeight
+  region.offsetX = source.offsetX
+  region.offsetY = source.offsetY
+  region.degrees = source.degrees
+  region.u = source.u
+  region.v = source.v
+  region.u2 = source.u2
+  region.v2 = source.v2
+  region.texture = source.texture
+  return region
+}
+
+function buildRegionAliasIndex(regions: TextureAtlasRegion[]): Map<string, TextureAtlasRegion> {
+  const index = new Map<string, TextureAtlasRegion>()
+  const register = (key: string, region: TextureAtlasRegion) => {
+    if (!key || index.has(key)) return
+    index.set(key, region)
+    index.set(key.toLowerCase(), region)
+  }
+
+  for (const region of regions) {
+    const fullName = region.name
+    const fullNameNoExt = stripImageExtension(fullName)
+    const fileName = basename(fullName)
+    const fileNameNoExt = stripImageExtension(fileName)
+    register(fullName, region)
+    register(fullNameNoExt, region)
+    register(fileName, region)
+    register(fileNameNoExt, region)
+  }
+
+  return index
+}
+
+function findAliasedRegion(name: string, index: Map<string, TextureAtlasRegion>): TextureAtlasRegion | null {
+  const fileName = basename(name)
+  const variants = [
+    name,
+    stripImageExtension(name),
+    fileName,
+    stripImageExtension(fileName)
+  ]
+
+  for (const variant of variants) {
+    const match = index.get(variant) ?? index.get(variant.toLowerCase())
+    if (match) return match
+  }
+
+  return null
+}
+
 /** Collect all region names the skeleton may request: attachment names, paths, sequence frame names, and skin-prefixed variants. */
 export function collectSkeletonRegionNames(skeleton: Record<string, unknown>): Set<string> {
   const names = new Set<string>()
@@ -107,7 +173,25 @@ export async function addPlaceholderRegionsForMissing(atlas: TextureAtlas, jsonD
   const skeleton = JSON.parse(jsonData) as Record<string, unknown>
   const wanted = collectSkeletonRegionNames(skeleton)
   const existing = new Set(atlas.regions.map((r) => r.name))
-  const missing = [...wanted].filter((n) => !existing.has(n))
+  const aliasIndex = buildRegionAliasIndex(atlas.regions)
+  const unresolved: string[] = []
+  let aliasCount = 0
+
+  for (const name of wanted) {
+    if (existing.has(name)) continue
+    const aliased = findAliasedRegion(name, aliasIndex)
+    if (!aliased) {
+      unresolved.push(name)
+      continue
+    }
+    const cloned = cloneRegionWithName(aliased, name)
+    atlas.regions.push(cloned)
+    aliased.page.regions.push(cloned)
+    existing.add(name)
+    aliasCount += 1
+  }
+
+  const missing = unresolved
   if (missing.length === 0) return
   const size = 16
   const canvas = document.createElement('canvas')
@@ -145,7 +229,10 @@ export async function addPlaceholderRegionsForMissing(atlas: TextureAtlas, jsonD
     atlas.regions.push(region)
     page.regions.push(region)
   }
-  console.log('[SpineViewer] added placeholder regions for missing', missing.length, missing.slice(0, 5).join(', ') + (missing.length > 5 ? '...' : ''))
+  console.log(
+    '[SpineViewer] resolved missing atlas regions',
+    { aliased: aliasCount, placeholders: missing.length, sample: missing.slice(0, 5) }
+  )
 }
 
 /** Build a Spine TextureAtlas from loose textures + skeleton JSON (synthetic regions). */
@@ -185,9 +272,9 @@ export function createSyntheticAtlas(
   const createdRegions = new Set<string>()
   for (const [texturePath, texture] of pixiTextures) {
     const dims = textureDimensions.get(texturePath) || { width: texture.width, height: texture.height }
-    const pathWithoutExt = texturePath.replace(/\.(png|jpg|jpeg|webp)$/i, '')
+    const pathWithoutExt = stripImageExtension(texturePath)
     const fileName = texturePath.split(/[/\\]/).pop() || texturePath
-    const fileNameWithoutExt = fileName.replace(/\.(png|jpg|jpeg|webp)$/i, '')
+    const fileNameWithoutExt = stripImageExtension(fileName)
     const page = new TextureAtlasPage(texturePath)
     page.width = dims.width
     page.height = dims.height
